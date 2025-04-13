@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Endless Runner Játék</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+        font-family: "Roboto", sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #e6f2ff;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 30px;
+        padding-top: 30px;
+      }
+      #leftPanel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+      }
+      canvas {
+        background: #87ceeb;
+        border: 3px solid #333;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      }
+      #rightPanel {
+        width: 250px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .box {
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 12px;
+        padding: 15px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      #scoreBoard ol {
+        padding-left: 20px;
+      }
+      #gameOverScreen {
+        display: none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border: 2px solid #333;
+        border-radius: 10px;
+        padding: 30px;
+        text-align: center;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+      }
+      #restartButton {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 8px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+      }
+      #difficultySelection button {
+        margin: 5px;
+        padding: 8px 16px;
+        font-size: 14px;
+        border-radius: 6px;
+        border: 1px solid #333;
+        cursor: pointer;
+      }
+      #invincibleTimer,
+      #jumpBoostTimer {
+        display: none;
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 20px;
+        color: blue;
+        font-weight: bold;
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 5px 10px;
+        border-radius: 10px;
+      }
+      #invincibleTimer {
+        top: 50px;
+      }
+      #jumpBoostTimer {
+        top: 90px;
+      }
+
+      details {
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 12px;
+        padding: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        width: 250px;
+      }
+
+      summary {
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 16px;
+      }
+
+      details p {
+        margin-top: 10px;
+        font-size: 14px;
+      }
+      #infoMenu {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+      }
+
+      @media (max-width: 1150px) {
+        canvas {
+          height: 300px;
+        }
+      }
+
+      @media (max-width: 850px) {
+        body {
+          flex-direction: column;
+          align-items: center;
+          gap: 20px;
+        }
+
+        #infoMenu {
+          top: auto;
+          bottom: 10px;
+          right: 10px;
+        }
+
+        canvas {
+          height: 300px;
+        }
+      }
+
+      @media (max-width: 650px) {
+        canvas {
+          height: 200px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="infoMenu">
+      <details>
+        <summary>ℹ️ Játék Útmutató</summary>
+        <p><strong>Irányítás:</strong><br />Space - Ugrás</p>
+        <p>
+          <strong>Kék Power-Up:</strong><br />5 mp sebezhetetlenség (világoskék
+          szín)
+        </p>
+        <p>
+          <strong>Sárga Power-Up:</strong><br />5 mp nagyobb ugrás (narancssárga
+          szín)
+        </p>
+      </details>
+    </div>
+
+    <div id="leftPanel">
+      <div id="difficultySelection">
+        <h2>Válassz nehézségi szintet:</h2>
+        <button id="easyButton">Könnyű</button>
+        <button id="mediumButton">Közepes</button>
+        <button id="hardButton">Nehéz</button>
+      </div>
+
+      <canvas
+        id="gameCanvas"
+        width="800"
+        height="400"
+        style="display: none"
+      ></canvas>
+
+      <div id="invincibleTimer">
+        Sebezhetetlen: <span id="invincibleTimeLeft">5</span> mp
+      </div>
+      <div id="jumpBoostTimer">
+        Ugrás Boost: <span id="jumpBoostTimeLeft">5</span> mp
+      </div>
+    </div>
+
+    <div id="rightPanel">
+      <div id="scoreBoard" class="box">
+        <h2>Legjobb Pontszámok</h2>
+        <ol id="scoreList"></ol>
+      </div>
+      <div id="powerUpCounter" class="box">
+        <p><strong>Kék Power-Up:</strong> <span id="passCount">0</span></p>
+        <p><strong>Sárga Power-Up:</strong> <span id="shrinkCount">0</span></p>
+      </div>
+    </div>
+
+    <div id="gameOverScreen">
+      <h1>Játék Vége!</h1>
+      <button id="restartButton">Új Játék</button>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      let player = {
+        x: 50,
+        y: 300,
+        width: 30,
+        height: 30,
+        gravity: 0.9,
+        baseJumpPower: -18,
+        jumpPower: -15,
+        velocityY: 0,
+        isJumping: false,
+      };
+
+      let isInvincible = false;
+      let isJumpBoosted = false;
+      let invincibleTimeLeft = 0;
+      let jumpBoostTimeLeft = 0;
+      let invincibleInterval = null;
+      let invincibleTimeout = null;
+      let jumpBoostInterval = null;
+      let jumpBoostTimeout = null;
+
+      let obstacles = [];
+      let powerUps = [];
+      let score = 0;
+      let gameOver = false;
+      let gameInterval;
+      let obstacleSpacing = 200;
+      let highScores = [];
+
+      let passCount = 0;
+      let shrinkCount = 0;
+
+      let difficulty = {
+        speed: 5,
+        powerUpFrequency: 0.005,
+      };
+
+      function setDifficulty(level) {
+        switch (level) {
+          case "easy":
+            difficulty.speed = 3;
+            difficulty.powerUpFrequency = 0.007;
+            break;
+          case "medium":
+            difficulty.speed = 5;
+            difficulty.powerUpFrequency = 0.004;
+            break;
+          case "hard":
+            difficulty.speed = 7;
+            difficulty.powerUpFrequency = 0.002;
+            break;
+        }
+        document.getElementById("difficultySelection").style.display = "none";
+        canvas.style.display = "block";
+        startGame();
+      }
+
+      function createObstacle() {
+        const height = Math.random() * 50 + 20;
+        const y = canvas.height - height;
+        if (
+          obstacles.length === 0 ||
+          obstacles[obstacles.length - 1].x < canvas.width - obstacleSpacing
+        ) {
+          obstacles.push({ x: canvas.width, y, width: 20, height });
+        }
+      }
+
+      function createPowerUp() {
+        const type = Math.random() < 0.5 ? "pass" : "shrink";
+
+        const height = 20;
+        const y = canvas.height - height - 5;
+
+        powerUps.push({ x: canvas.width, y, width: 20, height: 20, type });
+        if (powerUps.length > 10) powerUps.shift();
+      }
+      function updatePowerUpCounter() {
+        document.getElementById("passCount").innerText = passCount;
+        document.getElementById("shrinkCount").innerText = shrinkCount;
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = isJumpBoosted
+          ? "orange"
+          : isInvincible
+          ? "lightblue"
+          : "green";
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+
+        obstacles.forEach((o) => {
+          ctx.fillStyle = "red";
+          ctx.fillRect(o.x, o.y, o.width, o.height);
+        });
+
+        powerUps.forEach((p) => {
+          ctx.fillStyle = p.type === "pass" ? "blue" : "yellow";
+          ctx.fillRect(p.x, p.y, p.width, p.height);
+        });
+
+        ctx.fillStyle = "black";
+        ctx.font = "20px Arial";
+        ctx.fillText(`Pontszám: ${score}`, 10, 20);
+      }
+
+      function update() {
+        if (gameOver) return;
+
+        player.velocityY += player.gravity;
+        player.y += player.velocityY;
+
+        if (player.y + player.height >= canvas.height) {
+          player.y = canvas.height - player.height;
+          player.velocityY = 0;
+          player.isJumping = false;
+        }
+
+        if (Math.random() < difficulty.powerUpFrequency) createPowerUp();
+
+        updatePowerUpCounter();
+
+        obstacles.forEach((o, i) => {
+          o.x -= difficulty.speed;
+          if (o.x + o.width < 0) {
+            obstacles.splice(i, 1);
+            score++;
+          }
+          if (
+            !isInvincible &&
+            player.x < o.x + o.width &&
+            player.x + player.width > o.x &&
+            player.y + player.height > o.y
+          ) {
+            gameOver = true;
+            clearInterval(gameInterval);
+            updateHighScores();
+            document.getElementById("gameOverScreen").style.display = "block";
+          }
+        });
+
+        powerUps.forEach((p, i) => {
+          p.x -= difficulty.speed;
+          if (p.x + p.width < 0) {
+            powerUps.splice(i, 1);
+            return;
+          }
+
+          if (
+            player.x < p.x + p.width &&
+            player.x + player.width > p.x &&
+            player.y + player.height > p.y &&
+            player.y < p.y + p.height
+          ) {
+            if (p.type === "pass") {
+              passCount++;
+              isInvincible = true;
+              invincibleTimeLeft = 5;
+              document.getElementById("invincibleTimer").style.display =
+                "block";
+              document.getElementById("invincibleTimeLeft").innerText =
+                invincibleTimeLeft;
+
+              clearInterval(invincibleInterval);
+              clearTimeout(invincibleTimeout);
+
+              invincibleInterval = setInterval(() => {
+                invincibleTimeLeft--;
+                document.getElementById("invincibleTimeLeft").innerText =
+                  invincibleTimeLeft;
+                if (invincibleTimeLeft <= 0) {
+                  clearInterval(invincibleInterval);
+                  document.getElementById("invincibleTimer").style.display =
+                    "none";
+                }
+              }, 1000);
+              invincibleTimeout = setTimeout(
+                () => (isInvincible = false),
+                5000
+              );
+            } else {
+              shrinkCount++;
+              score += 2;
+              isJumpBoosted = true;
+              player.jumpPower = -22;
+              jumpBoostTimeLeft = 5;
+              document.getElementById("jumpBoostTimer").style.display = "block";
+              document.getElementById("jumpBoostTimeLeft").innerText =
+                jumpBoostTimeLeft;
+
+              clearInterval(jumpBoostInterval);
+              clearTimeout(jumpBoostTimeout);
+
+              jumpBoostInterval = setInterval(() => {
+                jumpBoostTimeLeft--;
+                document.getElementById("jumpBoostTimeLeft").innerText =
+                  jumpBoostTimeLeft;
+                if (jumpBoostTimeLeft <= 0) {
+                  clearInterval(jumpBoostInterval);
+                  document.getElementById("jumpBoostTimer").style.display =
+                    "none";
+                }
+              }, 1000);
+              jumpBoostTimeout = setTimeout(() => {
+                isJumpBoosted = false;
+                player.jumpPower = player.baseJumpPower;
+              }, 5000);
+            }
+            powerUps.splice(i, 1);
+          }
+        });
+
+        draw();
+      }
+
+      function startGame() {
+        gameInterval = setInterval(() => {
+          if (!gameOver) {
+            createObstacle();
+            update();
+          }
+        }, 1000 / 60);
+      }
+
+      function updateHighScores() {
+        if (score > 0) {
+          highScores.push(score);
+          highScores.sort((a, b) => b - a);
+          highScores = highScores.slice(0, 5);
+        }
+        renderHighScores();
+      }
+
+      function renderHighScores() {
+        const list = document.getElementById("scoreList");
+        list.innerHTML = "";
+        highScores.forEach((s, i) => {
+          const li = document.createElement("li");
+          li.textContent = `${i + 1}. ${s}`;
+          list.appendChild(li);
+        });
+      }
+
+      document.getElementById("easyButton").onclick = () =>
+        setDifficulty("easy");
+      document.getElementById("mediumButton").onclick = () =>
+        setDifficulty("medium");
+      document.getElementById("hardButton").onclick = () =>
+        setDifficulty("hard");
+
+      document.getElementById("restartButton").onclick = () => {
+        gameOver = false;
+        score = 0;
+        obstacles = [];
+        powerUps = [];
+        passCount = 0;
+        shrinkCount = 0;
+        isInvincible = false;
+        isJumpBoosted = false;
+        player.jumpPower = player.baseJumpPower;
+        clearInterval(invincibleInterval);
+        clearTimeout(invincibleTimeout);
+        clearInterval(jumpBoostInterval);
+        clearTimeout(jumpBoostTimeout);
+        document.getElementById("invincibleTimer").style.display = "none";
+        document.getElementById("jumpBoostTimer").style.display = "none";
+        document.getElementById("gameOverScreen").style.display = "none";
+        document.getElementById("difficultySelection").style.display = "block";
+        canvas.style.display = "none";
+      };
+
+      document.addEventListener("keydown", (e) => {
+        if (e.code === "Space" && !player.isJumping) {
+          player.velocityY = player.jumpPower;
+          player.isJumping = true;
+        }
+      });
+
+      window.addEventListener("keydown", function (e) {
+        if (e.code === "Space" || e.key === " ") {
+          e.preventDefault();
+          console.log("Space lenyomva, de nem görget az oldal.");
+        }
+      });
+
+      window.onload = () => {
+        localStorage.removeItem("highScores");
+        highScores = [];
+        renderHighScores();
+      };
+    </script>
+  </body>
+</html>
